@@ -15,11 +15,9 @@ export const SlotService = {
         }
 
         const existingUser = await User.findOne({ email: email });
-        console.log(existingUser)
         if (!existingUser) {
             throw { code: 401, message: "Invalid email address or password" };
         }
-        console.log(existingUser.password)
         const passwordValid = await bcrypt.compare(password, existingUser.password);
         if (!passwordValid) {
             throw { code: 401, message: "Invalid email address or password" };
