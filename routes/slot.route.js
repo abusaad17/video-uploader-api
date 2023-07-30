@@ -68,12 +68,16 @@ export const SlotRoutes = (app) => {
   app.post("/api/accounts/slot-book", Authorize(), async (req, res) => {
     try {
       if (req.user.isBooked) {
-        throw { code: 400, message: "User has already booked a slot" };
+        throw { code: 400, message: "You have already booked a seat" };
       }
       if (!req.body.slotId) {
         throw { code: 400, message: "Bad request : Slot id not found" };
       }
       const slotId = req.body.slotId;
+      const users = await User.find({ isBooked: slotId }).exec();
+      if (users.length > 0) {
+        throw { code: 400, message: "This seat is already booked" };
+      }
       const user = req.user;
       user.isBooked = slotId;
       await user.save();
@@ -94,6 +98,11 @@ export const SlotRoutes = (app) => {
   });
   app.get("/api/accounts/booked-slot-ids", Authorize(), async (req, res) => {
     try {
+      const currentUser = req.user;
+      let status = false;
+      if (currentUser.isBooked) {
+        status = true;
+      }
       const users = await User.find().exec();
       let arr = [];
       for (const element of users) {
@@ -101,7 +110,7 @@ export const SlotRoutes = (app) => {
           arr.push(element.isBooked);
         }
       }
-      res.status(200).send({ bookedIds: arr });
-    } catch (error) {}
-  });
+      res.status(200).send({ bookedIds: arr, status });
+    } catch (error) {}
+  });
 };
