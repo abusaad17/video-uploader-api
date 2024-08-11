@@ -19,7 +19,9 @@ app.use(bodyParser.json());
 app.use(logger("dev"));
 app.use(cors());
 app.use('/uploads', express.static('uploads'));
-
+app.get('/', (req, res) => {
+  res.send('Server is running...')
+})
 // Routes for API endpoints
 VideoRoutes(app);
 AuthRoutes(app);
