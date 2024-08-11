@@ -1,7 +1,5 @@
-import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
 import { User } from "../models/user.model.js";
-
 
 export const generatePassword = (firstname, lastname, number) => {
   const firstPart = firstname.slice(0, 2).toLowerCase();
@@ -18,17 +16,17 @@ export const sendPasswordEmail = async (email, password) => {
       port: 587,
       secure: false, // use SSL
       auth: {
-        user: "abusaadgulzar1@gmail.com",
+        user: process.env.GMAIL_USERNAME,
         pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 
     // Configure the mailoptions object
     const mailOptions = {
-      from: "abusaadgulzar1@gmail.com",
-      to: "abusaad.dev3@gmail.com",
-      subject: "Sending Email using Node.js",
-      text: "That was easy!",
+      from: process.env.GMAIL_USERNAME,
+      to: email,
+      subject: "Thanks for onboarding on Video Uploader !!",
+      text: `Your created password is: ${password}. Keep it safe and handy . Use this password for further using Video Uploader Services. Thanks !!`,
     };
 
     // Send the email
