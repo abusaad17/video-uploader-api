@@ -3,19 +3,29 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
-import {SlotRoutes}  from "./routes/slot.route.js";
+import logger from "morgan";
+import { AuthRoutes } from "./routes/auth.route.js";
+import { connectDB } from "./database/config.js";
+import { VideoRoutes } from "./routes/video.route.js";
+
 dotenv.config();
 const app = express();
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true }));
+
+// Connect to database
+connectDB();
+
+// Middleware for parsing request body and logging requests
+app.use(bodyParser.json());
+app.use(logger("dev"));
 app.use(cors());
+app.use('/uploads', express.static('uploads'));
 
-mongoose.connect(process.env.MONGODB_URI, { dbName: process.env.MONGODB_NAME });
+// Routes for API endpoints
+VideoRoutes(app);
+AuthRoutes(app);
 
-SlotRoutes(app);
-
-app.listen(process.env.PORT, () => {
-    console.log(
-      `Read the docs - http://localhost:${process.env.PORT}`
-    );
-  });
+// Server listening on port 3000 for incoming requests
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
