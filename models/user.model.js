@@ -8,6 +8,7 @@ export const User = mongoose.model(
     email: { type: String, required: true },
     number: { type: String, required: true },
     password: { type: String, required: true},
+    thumbnail: { type: String },
     bio: { type: String},
     videoId: { type: [String]}
   }),

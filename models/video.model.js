@@ -7,6 +7,7 @@ export const Video = mongoose.model(
     title: { type: String, required: true },
     description: { type: String, required: true },
     videoPath: { type: String, required: true },
+    thumbnail: { type: String },
     createdAt: { type: Date },
   }),
   "videos"

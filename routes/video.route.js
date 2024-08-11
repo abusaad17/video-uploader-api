@@ -17,13 +17,14 @@ export const VideoRoutes = (app) => {
         if (!req.file) {
           return res.status(400).send({ message: "No video file uploaded" });
         }
-        const { title, description } = req.body;
+        const { title, description, thumbnail } = req.body;
         const videoPath = req.file.path;
 
         const newVideo = new Video({
           title,
           description,
           videoPath,
+          thumbnail: thumbnail ?? '',
           createdAt: Date.now(),
         });
 
@@ -71,7 +72,13 @@ export const VideoRoutes = (app) => {
 
               try {
                 const fileData = fs.readFileSync(filePath);
-                return fileData.toString("base64");
+                return {
+                  videoData: fileData.toString("base64"),
+                  thumbnail: video.thumbnail, // Include the thumbnail
+                  title: video.title,
+                  description: video.description,
+                  createdAt: video.createdAt
+                };
               } catch (err) {
                 console.error(`Error processing file ${filePath}:`, err);
                 return null;
@@ -124,6 +131,7 @@ export const VideoRoutes = (app) => {
             return {
               _id: video._id,
               title: video.title,
+              thumbnail: video.thumbnail,
               description: video.description,
               videoBase64: base64Data,
               createdAt: video.createdAt,

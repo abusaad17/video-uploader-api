@@ -89,4 +89,24 @@ export const AuthRoutes = (app) => {
       res.status(e.code).send({ message: e.message });
     }
   });
+
+  app.post("/api/accounts/addthumbnail", Authorize(), async (req, res) => {
+    try {
+      const user = await User.findOne({ email: req.user.email });
+      if (!user) {
+        throw { code: 404, message: "User not found" };
+      }
+      await User.findByIdAndUpdate(user._id, {
+        thumbnail: req.body.thumbnail,
+      })
+      res
+        .status(200)
+        .send({
+          message: "Thumbnail added successfully"
+        });
+    } catch (e) {
+      console.error(e);
+      res.status(e.code).send({ message: e.message });
+    }
+  });
 };
