@@ -49,7 +49,7 @@ export const VideoRoutes = (app) => {
     try {
       // Find all users who have uploaded videos
       const users = await User.find({ videoId: { $exists: true, $ne: [] } })
-        .select("_id firstname lastname videoId")
+        .select("_id firstname lastname videoId thumbnail")
         .limit(5); // Limit to 5 users for efficiency
 
       const usersWithVideos = await Promise.all(
@@ -90,6 +90,7 @@ export const VideoRoutes = (app) => {
             userId: user._id,
             firstname: user.firstname,
             lastname: user.lastname,
+            thumbnail: user.thumbnail,
             videoArray: videoArray.filter((v) => v !== null),
           };
         })

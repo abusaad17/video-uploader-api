@@ -63,6 +63,7 @@ export const AuthRoutes = (app) => {
           lastname: user?.lastname,
           email: user?.email,
           number: user?.number,
+          thumbnail: user?.thumbnail
         });
     } catch (e) {
       console.error(e);
