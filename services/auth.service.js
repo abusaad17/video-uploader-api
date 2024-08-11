@@ -15,11 +15,11 @@ export const AuthService = {
 
     const existingUser = await User.findOne({ firstname: firstname });
     if (!existingUser) {
-      throw { code: 401, message: "Invalid firstname or password" };
+      throw { code: 401, message: "Invalid firstname" };
     }
     const passwordValid = await bcrypt.compare(password, existingUser.password);
     if (!passwordValid) {
-      throw { code: 401, message: "Invalid firstname or password" };
+      throw { code: 401, message: "Invalid password" };
     }
 
     const accessTokenResponse = {
@@ -33,7 +33,7 @@ export const AuthService = {
       accessTokenResponse,
       process.env.JWT_SECRET_KEY,
       {
-        expiresIn: persist ? "1y" : "8h",
+        expiresIn: persist ? "12h" : "8h",
       }
     );
 
