@@ -17,7 +17,12 @@ connectDB();
 // Middleware for parsing request body and logging requests
 app.use(bodyParser.json());
 app.use(logger("dev"));
-app.use(cors());
+// CORS configuration to allow requests from port 5173
+app.use(cors({
+  origin: 'http://localhost:5173', // Allow requests from this origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow these HTTP methods
+  credentials: true // Allow credentials (e.g., cookies, authorization headers)
+}));
 app.use('/uploads', express.static('uploads'));
 app.get('/', (req, res) => {
   res.send('Server is running...')

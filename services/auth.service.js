@@ -40,6 +40,7 @@ export const AuthService = {
     return {
       email: existingUser.email,
       accessToken: accessToken,
+      userId: existingUser._id,
     };
   },
 

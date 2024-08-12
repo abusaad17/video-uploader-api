@@ -25,6 +25,7 @@ export const AuthRoutes = (app) => {
       if (user && accessToken) {
         res.status(200).send({
           token: accessToken.accessToken,
+          userId: accessToken.userId,
         });
       } else {
         // User not found or access token is invalid
@@ -63,7 +64,8 @@ export const AuthRoutes = (app) => {
           lastname: user?.lastname,
           email: user?.email,
           number: user?.number,
-          thumbnail: user?.thumbnail
+          thumbnail: user?.thumbnail,
+          bio: user?.bio,
         });
     } catch (e) {
       console.error(e);

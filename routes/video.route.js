@@ -109,6 +109,7 @@ export const VideoRoutes = (app) => {
   // Get Video by user ID
   app.get("/api/video/:userId", Authorize(), async (req, res) => {
     try {
+      console.log(req.params.userId)
       const user = await User.findById(req.params.userId);
       if (!user) {
         return res.status(404).send({ message: "User not found" });
