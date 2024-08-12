@@ -102,8 +102,12 @@ export const AuthRoutes = (app) => {
         if (!user) {
           throw { code: 404, message: "User not found" };
         }
+        let thumbnailFile = ''
+        if(req.files.thumbnail){
+          thumbnailFile = req.files.thumbnail[0]?.location ?? '';
+        }
         await User.findByIdAndUpdate(user._id, {
-          thumbnail: req.files.thumbnail[0].location,
+          thumbnail: thumbnailFile,
           bio: req.body.bio,
         });
         res.status(200).send({
