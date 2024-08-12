@@ -1,30 +1,57 @@
 import { Video } from "../models/video.model.js";
 import { Authorize } from "../middleware/auth.js";
-import { upload } from "../utils/multer.js";
 import { User } from "../models/user.model.js";
 import path, { join } from "path";
 import __dirname from "path";
 import fs from "fs";
+import multerS3 from "multer-s3";
+import multer from "multer";
+import { S3Client } from "@aws-sdk/client-s3";
 
 export const VideoRoutes = (app) => {
+  // Configure AWS S3
+  const s3Client = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
+  });
+
+  // Configure multer for S3 storage
+  const upload = multer({
+    storage: multerS3({
+      s3: s3Client,
+      bucket: process.env.S3_BUCKET_NAME,
+      key: function (req, file, cb) {
+        cb(null, Date.now().toString() + "-" + file.originalname);
+      },
+    }),
+  });
   // upload video
   app.post(
     "/api/video/upload",
     Authorize(),
-    upload.single("video"),
+    upload.fields([
+      { name: "video", maxCount: 1 },
+      { name: "thumbnail", maxCount: 1 },
+    ]),
     async (req, res) => {
       try {
-        if (!req.file) {
+        if (!req.files || !req.files.video) {
           return res.status(400).send({ message: "No video file uploaded" });
         }
-        const { title, description, thumbnail } = req.body;
-        const videoPath = req.file.path;
-
+        const { title, description } = req.body;
+        const videoFile = req.files.video[0].location;
+        let thumbnailFile = ''
+        if(req.files.thumbnail){
+          thumbnail = req.files?.thumbnail[0]?.location ?? '';
+        }
         const newVideo = new Video({
           title,
           description,
-          videoPath,
-          thumbnail: thumbnail ?? '',
+          videoPath: videoFile,
+          thumbnailPath: thumbnailFile,
           createdAt: Date.now(),
         });
 
@@ -32,6 +59,19 @@ export const VideoRoutes = (app) => {
         await User.findByIdAndUpdate(req.user._id, {
           $push: { videoId: newVideo._id },
         });
+        // if (!req.file) {
+        //   return res.status(400).send({ message: "No video file uploaded" });
+        // }
+        // const { title, description, thumbnail } = req.body;
+        // const videoPath = req.file.path;
+
+        // const newVideo = new Video({
+        //   title,
+        //   description,
+        //   videoPath,
+        //   thumbnail: thumbnail ?? '',
+        //   createdAt: Date.now(),
+        // });
         res.status(201).send({
           message: "Video uploaded successfully",
           video: newVideo,
@@ -59,39 +99,20 @@ export const VideoRoutes = (app) => {
             .sort({ createdAt: -1 })
             .limit(5);
 
-          const videoArray = await Promise.all(
-            videos.map(async (video) => {
-              if (!video.videoPath || typeof video.videoPath !== "string") {
-                console.error("Invalid videoPath:", video.videoPath);
-                return null;
-              }
+          const videoArray = videos.map((video) => ({
+            videoUrl: video.videoPath, // This is now the S3 URL
+            thumbnailUrl: video.thumbnailPath, // This is now the S3 URL for the thumbnail
+            title: video.title,
+            description: video.description,
+            createdAt: video.createdAt,
+          }));
 
-              const filename = path.basename(video.videoPath);
-              const currentDir = process.cwd();
-              const filePath = path.join(currentDir, "uploads", filename);
-
-              try {
-                const fileData = fs.readFileSync(filePath);
-                return {
-                  videoData: fileData.toString("base64"),
-                  thumbnail: video.thumbnail, // Include the thumbnail
-                  title: video.title,
-                  description: video.description,
-                  createdAt: video.createdAt
-                };
-              } catch (err) {
-                console.error(`Error processing file ${filePath}:`, err);
-                return null;
-              }
-            })
-          );
-          console.log(videoArray.length);
           return {
             userId: user._id,
             firstname: user.firstname,
             lastname: user.lastname,
             thumbnail: user.thumbnail,
-            videoArray: videoArray.filter((v) => v !== null),
+            videoArray,
           };
         })
       );
@@ -109,7 +130,6 @@ export const VideoRoutes = (app) => {
   // Get Video by user ID
   app.get("/api/video/:userId", Authorize(), async (req, res) => {
     try {
-      console.log(req.params.userId)
       const user = await User.findById(req.params.userId);
       if (!user) {
         return res.status(404).send({ message: "User not found" });
@@ -117,38 +137,17 @@ export const VideoRoutes = (app) => {
 
       // Fetch all videos for the user
       const videos = await Video.find({ _id: { $in: user.videoId } });
-      // Convert each video to Base64
-      const videoData = await Promise.all(
-        videos.map(async (video) => {
-          // Extract filename from videoPath
-          const filename = path.basename(video.videoPath);
-          const currentDir = process.cwd();
-          const filePath = path.join(currentDir, "uploads", filename);
 
-          try {
-            // Read file and convert to Base64
-            const fileData = fs.readFileSync(filePath);
-            const base64Data = fileData.toString("base64");
+      const videoData = videos.map((video) => ({
+        _id: video._id,
+        title: video.title,
+        thumbnailUrl: video.thumbnailPath, // This is now the S3 URL for the thumbnail
+        description: video.description,
+        videoUrl: video.videoPath, // This is now the S3 URL for the video
+        createdAt: video.createdAt,
+      }));
 
-            return {
-              _id: video._id,
-              title: video.title,
-              thumbnail: video.thumbnail,
-              description: video.description,
-              videoBase64: base64Data,
-              createdAt: video.createdAt,
-            };
-          } catch (err) {
-            console.error(`Error reading file ${filePath}:`, err);
-            return null; // Handle error and continue processing other videos
-          }
-        })
-      );
-
-      // Remove any null entries due to errors
-      const filteredVideoData = videoData.filter((v) => v !== null);
-
-      res.status(200).send(filteredVideoData);
+      res.status(200).send(videoData);
     } catch (error) {
       console.error("Error fetching videos:", error);
       res
