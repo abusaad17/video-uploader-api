@@ -51,7 +51,7 @@ export const VideoRoutes = (app) => {
           title,
           description,
           videoPath: videoFile,
-          thumbnailPath: thumbnailFile,
+          thumbnail: thumbnailFile,
           createdAt: Date.now(),
         });
 
@@ -101,7 +101,7 @@ export const VideoRoutes = (app) => {
 
           const videoArray = videos.map((video) => ({
             videoUrl: video.videoPath, // This is now the S3 URL
-            thumbnailUrl: video.thumbnailPath, // This is now the S3 URL for the thumbnail
+            thumbnail: video.thumbnail, // This is now the S3 URL for the thumbnail
             title: video.title,
             description: video.description,
             createdAt: video.createdAt,
@@ -141,7 +141,7 @@ export const VideoRoutes = (app) => {
       const videoData = videos.map((video) => ({
         _id: video._id,
         title: video.title,
-        thumbnailUrl: video.thumbnailPath, // This is now the S3 URL for the thumbnail
+        thumbnailUrl: video.thumbnail ?? 'No thumbnail', // This is now the S3 URL for the thumbnail
         description: video.description,
         videoUrl: video.videoPath, // This is now the S3 URL for the video
         createdAt: video.createdAt,
