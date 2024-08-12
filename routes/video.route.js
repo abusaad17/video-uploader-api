@@ -45,7 +45,7 @@ export const VideoRoutes = (app) => {
         const videoFile = req.files.video[0].location;
         let thumbnailFile = ''
         if(req.files.thumbnail){
-          thumbnail = req.files?.thumbnail[0]?.location ?? '';
+          thumbnailFile = req.files.thumbnail[0]?.location ?? '';
         }
         const newVideo = new Video({
           title,
