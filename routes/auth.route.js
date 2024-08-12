@@ -98,17 +98,19 @@ export const AuthRoutes = (app) => {
     upload.fields([{ name: "thumbnail", maxCount: 1 }]),
     async (req, res) => {
       try {
+        const { bio } = req.body;
         const user = await User.findOne({ email: req.user.email });
         if (!user) {
           throw { code: 404, message: "User not found" };
         }
+
         let thumbnailFile = ''
         if(req.files.thumbnail){
           thumbnailFile = req.files.thumbnail[0]?.location ?? '';
         }
         await User.findByIdAndUpdate(user._id, {
           thumbnail: thumbnailFile,
-          bio: req.body.bio,
+          bio: bio ?? '',
         });
         res.status(200).send({
           message: "Thumbnail/bio added successfully",
