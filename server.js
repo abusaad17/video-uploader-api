@@ -19,7 +19,7 @@ app.use(bodyParser.json());
 app.use(logger("dev"));
 // CORS configuration to allow requests from port 5173
 app.use(cors({
-  origin: 'https://video-uploader-ui.vercel.app/', // Allow requests from this origin
+  origin: 'https://video-uploader-l1d737hq2-abusaad17s-projects.vercel.app/', // Allow requests from this origin
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow these HTTP methods
   credentials: true // Allow credentials (e.g., cookies, authorization headers)
 }));
