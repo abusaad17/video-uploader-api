@@ -29,4 +29,5 @@ export const upload = multer({
       cb("Error: Only MP4 files are allowed!");
     }
   },
+  limits: { fileSize: 1000000000 } // Limit file size to 1GB
 });
