@@ -8,7 +8,12 @@ export const generatePassword = (firstname, lastname, number) => {
   return `${firstPart}${secondPart}${numberPart}`;
 };
 
-export const sendPasswordEmail = async (email, password) => {
+export function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+export const sendPasswordEmail = async (data, password) => {
   try {
     // Create a transporter object
     const transporter = nodemailer.createTransport({
@@ -24,16 +29,18 @@ export const sendPasswordEmail = async (email, password) => {
     // Configure the mailoptions object
     const mailOptions = {
       from: process.env.GMAIL_USERNAME,
-      to: email,
-      subject: "Thanks for onboarding on Video Uploader !!",
-      text: `Your created password is: ${password}. Keep it safe and handy . Use this password for further using Video Uploader Services. Thanks !!`,
+      to: data.email,
+      subject: `Thanks, ${data.firstname} for onboarding on Video Uploader !!`,
+      text: `Your automated password is: ${password} . Keep it safe and handy .Use this password for further using Video Uploader Services. Thanks !!`,
     };
 
     // Send the email
     transporter.sendMail(mailOptions, async function (error, info) {
       if (error) {
-        const existingUser = await User.findOne({ email });
-        await User.findByIdAndDelete(existingUser._id);
+        const existingUser = await User.findOne({ email: data.email });
+        if (existingUser) {
+          await User.findByIdAndDelete(existingUser._id);
+        }
         console.log("Error:", error);
       } else {
         console.log("Email sent: " + info.response);
@@ -41,7 +48,9 @@ export const sendPasswordEmail = async (email, password) => {
     });
   } catch (error) {
     const existingUser = await User.findOne({ email });
-    await User.findByIdAndDelete(existingUser._id);
+    if (existingUser) {
+      await User.findByIdAndDelete(existingUser._id);
+    }
     console.error("Nodemailer Error:", error);
     throw new Error("Failed to send email. Please try again later.");
   }

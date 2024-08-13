@@ -2,16 +2,14 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
-import { generatePassword, sendPasswordEmail } from "../utils/emailService.js";
+import {
+  generatePassword,
+  isValidEmail,
+  sendPasswordEmail,
+} from "../utils/emailService.js";
 
 export const AuthService = {
   generateAccessToken: async (firstname, password, persist) => {
-    if (!firstname) {
-      throw { code: 400, message: "Invalid value for: firstname" };
-    }
-    if (!password) {
-      throw { code: 400, message: "Invalid value for: password" };
-    }
 
     const existingUser = await User.findOne({ firstname: firstname });
     if (!existingUser) {
@@ -57,13 +55,15 @@ export const AuthService = {
     if (!data.email) {
       throw { code: 400, message: "Email is required" };
     }
-
+    if (!isValidEmail(data.email)) {
+      throw { code: 400, message: "Email is invalid" };
+    }
     const existingUser = await User.findOne({ email: data.email });
     if (existingUser) {
       throw { code: 409, message: `User already exists: ${data.email}` };
     }
 
-    const generatedPassword = await generatePassword(
+    const generatedPassword = generatePassword(
       data.firstname,
       data.lastname,
       data.number
@@ -84,7 +84,7 @@ export const AuthService = {
 
     try {
       await newUser.save();
-      await sendPasswordEmail(data.email, generatedPassword);
+      await sendPasswordEmail(data, generatedPassword);
       return true;
     } catch (err) {
       console.error(err);

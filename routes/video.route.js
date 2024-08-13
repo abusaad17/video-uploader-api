@@ -1,9 +1,7 @@
 import { Video } from "../models/video.model.js";
 import { Authorize } from "../middleware/auth.js";
 import { User } from "../models/user.model.js";
-import path, { join } from "path";
 import __dirname from "path";
-import fs from "fs";
 import multerS3 from "multer-s3";
 import multer from "multer";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -27,30 +25,73 @@ export const VideoRoutes = (app) => {
         cb(null, Date.now().toString() + "-" + file.originalname);
       },
     }),
-  });
+    fileFilter: function (req, file, cb) {
+      if (file.fieldname === "video") {
+        if (file.mimetype !== "video/mp4") {
+          return cb(new Error("Only .mp4 format is allowed for video"), false);
+        }
+      } else if (file.fieldname === "thumbnail") {
+        if (!file.mimetype.startsWith("image/")) {
+          return cb(
+            new Error("Only image files are allowed for thumbnail"),
+            false
+          );
+        }
+      }
+      cb(null, true);
+    },
+    limits: { fileSize: 6 * 1024 * 1024 }, // 7MB total limit
+  }).fields([
+    { name: "video", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 },
+  ]);
+
   // upload video
-  app.post(
-    "/api/video/upload",
-    Authorize(),
-    upload.fields([
-      { name: "video", maxCount: 1 },
-      { name: "thumbnail", maxCount: 1 },
-    ]),
-    async (req, res) => {
+  app.post("/api/video/upload", Authorize(), async (req, res) => {
+    upload(req, res, async function (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res
+            .status(400)
+            .send({ message: "File size should not exceed 6MB" });
+        }
+        return res.status(400).send({ message: err.message });
+      } else if (err) {
+        return res.status(400).send({ message: err.message });
+      }
+
       try {
         if (!req.files || !req.files.video) {
           return res.status(400).send({ message: "No video file uploaded" });
         }
+
         const { title, description } = req.body;
-        const videoFile = req.files.video[0].location;
-        let thumbnailFile = ''
-        if(req.files.thumbnail){
-          thumbnailFile = req.files.thumbnail[0]?.location ?? '';
+        if (!title) {
+          throw { code: 400, message: "Title is required" };
         }
+        if (title.length > 30) {
+          throw {
+            code: 400,
+            message: "Title should not be more than 30 characters.",
+          };
+        }
+        if (description.length > 120) {
+          throw {
+            code: 400,
+            message: "Description should not be more than 120 characters.",
+          };
+        }
+
+        const videoURl = req.files.video[0].location;
+        let thumbnailFile = "";
+        if (req.files.thumbnail) {
+          thumbnailFile = req.files.thumbnail[0]?.location ?? "";
+        }
+
         const newVideo = new Video({
           title,
           description,
-          videoPath: videoFile,
+          videoPath: videoURl,
           thumbnail: thumbnailFile,
           createdAt: Date.now(),
         });
@@ -59,31 +100,17 @@ export const VideoRoutes = (app) => {
         await User.findByIdAndUpdate(req.user._id, {
           $push: { videoId: newVideo._id },
         });
-        // if (!req.file) {
-        //   return res.status(400).send({ message: "No video file uploaded" });
-        // }
-        // const { title, description, thumbnail } = req.body;
-        // const videoPath = req.file.path;
 
-        // const newVideo = new Video({
-        //   title,
-        //   description,
-        //   videoPath,
-        //   thumbnail: thumbnail ?? '',
-        //   createdAt: Date.now(),
-        // });
         res.status(201).send({
           message: "Video uploaded successfully",
           video: newVideo,
         });
       } catch (error) {
         console.error("Error in video upload:", error);
-        res
-          .status(500)
-          .send({ message: "Failed to upload video", error: error.message });
+        res.status(error.code || 500).send({ message: error.message });
       }
-    }
-  );
+    });
+  });
 
   app.get("/api/video/all", async (req, res) => {
     try {
@@ -141,7 +168,7 @@ export const VideoRoutes = (app) => {
       const videoData = videos.map((video) => ({
         _id: video._id,
         title: video.title,
-        thumbnailUrl: video.thumbnail ?? 'No thumbnail', // This is now the S3 URL for the thumbnail
+        thumbnailUrl: video.thumbnail ?? "No thumbnail", // This is now the S3 URL for the thumbnail
         description: video.description,
         videoUrl: video.videoPath, // This is now the S3 URL for the video
         createdAt: video.createdAt,

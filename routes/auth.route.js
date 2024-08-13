@@ -2,6 +2,7 @@ import { AuthService } from "../services/auth.service.js";
 import { User } from "../models/user.model.js";
 import { Authorize } from "../middleware/auth.js";
 import multerS3 from "multer-s3";
+import sizeOf from "image-size";
 import multer from "multer";
 import { S3Client } from "@aws-sdk/client-s3";
 export const AuthRoutes = (app) => {
@@ -9,11 +10,12 @@ export const AuthRoutes = (app) => {
     try {
       const { firstname, password } = req.body;
       if (!firstname) {
-        throw { code: 400, message: "Email ID is required" };
+        throw { code: 400, message: "Firstname is required" };
       }
       if (!password) {
         throw { code: 400, message: "Password is required" };
       }
+
       const accessToken = await AuthService.generateAccessToken(
         firstname,
         password
@@ -73,6 +75,7 @@ export const AuthRoutes = (app) => {
       res.status(e.code).send({ message: e.message });
     }
   });
+
   // Configure AWS S3
   const s3Client = new S3Client({
     region: process.env.AWS_REGION,
@@ -91,7 +94,16 @@ export const AuthRoutes = (app) => {
         cb(null, Date.now().toString() + "-" + file.originalname);
       },
     }),
+    limits: { fileSize: 1 * 1024 * 1024 }, // 1MB
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith("image/")) {
+        cb(null, true);
+      } else {
+        cb(new Error("Not an image! Please upload an image."), false);
+      }
+    },
   });
+
   app.post(
     "/api/accounts/biothumbnail",
     Authorize(),
@@ -103,21 +115,42 @@ export const AuthRoutes = (app) => {
         if (!user) {
           throw { code: 404, message: "User not found" };
         }
-
-        let thumbnailFile = ''
-        if(req.files.thumbnail){
-          thumbnailFile = req.files.thumbnail[0]?.location ?? '';
+        if (bio) {
+          if (bio.length > 500) {
+            throw {
+              code: 400,
+              message: "Bio should have a maximum of 500 characters.",
+            };
+          }
         }
+
+        let thumbnailFile = "";
+        if (req.files.thumbnail) {
+          const file = req.files.thumbnail[0];
+
+          // Check image dimensions
+          const dimensions = sizeOf(file.buffer);
+          if (dimensions.width > 500 || dimensions.height > 500) {
+            throw {
+              code: 400,
+              message: "Image dimensions should not exceed 500x500 pixels.",
+            };
+          }
+
+          thumbnailFile = file.location;
+        }
+
         await User.findByIdAndUpdate(user._id, {
           thumbnail: thumbnailFile,
-          bio: bio ?? '',
+          bio: bio ?? "",
         });
+
         res.status(200).send({
           message: "Thumbnail/bio added successfully",
         });
       } catch (e) {
         console.error(e);
-        res.status(e.code).send({ message: e.message });
+        res.status(e.code || 500).send({ message: e.message });
       }
     }
   );
