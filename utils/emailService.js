@@ -15,18 +15,18 @@ export function isValidEmail(email) {
 
 export const sendPasswordEmail = async (data, password) => {
   try {
-    // Create a transporter object
+
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
-      secure: false, // use SSL
+      secure: false,
       auth: {
         user: process.env.GMAIL_USERNAME,
         pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 
-    // Configure the mailoptions object
+
     const mailOptions = {
       from: process.env.GMAIL_USERNAME,
       to: data.email,
@@ -34,7 +34,6 @@ export const sendPasswordEmail = async (data, password) => {
       text: `Your automated password is: ${password} . Keep it safe and handy .Use this password for further using Video Uploader Services. Thanks !!`,
     };
 
-    // Send the email
     transporter.sendMail(mailOptions, async function (error, info) {
       if (error) {
         const existingUser = await User.findOne({ email: data.email });

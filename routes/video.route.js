@@ -5,6 +5,7 @@ import __dirname from "path";
 import multerS3 from "multer-s3";
 import multer from "multer";
 import { S3Client } from "@aws-sdk/client-s3";
+import { VideoService } from "../services/video.services.js";
 
 export const VideoRoutes = (app) => {
   // Configure AWS S3
@@ -40,7 +41,7 @@ export const VideoRoutes = (app) => {
       }
       cb(null, true);
     },
-    limits: { fileSize: 6 * 1024 * 1024 }, // 7MB total limit
+    limits: { fileSize: 6 * 1024 * 1024 }, // 6MB total limit
   }).fields([
     { name: "video", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
@@ -81,25 +82,12 @@ export const VideoRoutes = (app) => {
             message: "Description should not be more than 120 characters.",
           };
         }
-
-        const videoURl = req.files.video[0].location;
-        let thumbnailFile = "";
-        if (req.files.thumbnail) {
-          thumbnailFile = req.files.thumbnail[0]?.location ?? "";
-        }
-
-        const newVideo = new Video({
+        const newVideo = await VideoService.uploadVideo(
           title,
           description,
-          videoPath: videoURl,
-          thumbnail: thumbnailFile,
-          createdAt: Date.now(),
-        });
-
-        await newVideo.save();
-        await User.findByIdAndUpdate(req.user._id, {
-          $push: { videoId: newVideo._id },
-        });
+          req.files,
+          req.user._id
+        );
 
         res.status(201).send({
           message: "Video uploaded successfully",
@@ -114,36 +102,7 @@ export const VideoRoutes = (app) => {
 
   app.get("/api/video/all", async (req, res) => {
     try {
-      // Find all users who have uploaded videos
-      const users = await User.find({ videoId: { $exists: true, $ne: [] } })
-        .select("_id firstname lastname videoId thumbnail")
-        .limit(5); // Limit to 5 users for efficiency
-
-      const usersWithVideos = await Promise.all(
-        users.map(async (user) => {
-          // Find the 5 most recent videos for this user
-          const videos = await Video.find({ _id: { $in: user.videoId } })
-            .sort({ createdAt: -1 })
-            .limit(5);
-
-          const videoArray = videos.map((video) => ({
-            videoUrl: video.videoPath, // This is now the S3 URL
-            thumbnail: video.thumbnail, // This is now the S3 URL for the thumbnail
-            title: video.title,
-            description: video.description,
-            createdAt: video.createdAt,
-          }));
-
-          return {
-            userId: user._id,
-            firstname: user.firstname,
-            lastname: user.lastname,
-            thumbnail: user.thumbnail,
-            videoArray,
-          };
-        })
-      );
-
+      const usersWithVideos = await VideoService.getAllVideos();
       res.status(200).json(usersWithVideos);
     } catch (error) {
       console.error("Error fetching recent videos:", error);
@@ -157,23 +116,7 @@ export const VideoRoutes = (app) => {
   // Get Video by user ID
   app.get("/api/video/:userId", Authorize(), async (req, res) => {
     try {
-      const user = await User.findById(req.params.userId);
-      if (!user) {
-        return res.status(404).send({ message: "User not found" });
-      }
-
-      // Fetch all videos for the user
-      const videos = await Video.find({ _id: { $in: user.videoId } });
-
-      const videoData = videos.map((video) => ({
-        _id: video._id,
-        title: video.title,
-        thumbnailUrl: video.thumbnail ?? "No thumbnail", // This is now the S3 URL for the thumbnail
-        description: video.description,
-        videoUrl: video.videoPath, // This is now the S3 URL for the video
-        createdAt: video.createdAt,
-      }));
-
+      const videoData = await VideoService.getVideoByUserId(req.params.userId);
       res.status(200).send(videoData);
     } catch (error) {
       console.error("Error fetching videos:", error);

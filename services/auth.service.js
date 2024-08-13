@@ -1,7 +1,7 @@
-import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
+
 import {
   generatePassword,
   isValidEmail,
@@ -10,7 +10,6 @@ import {
 
 export const AuthService = {
   generateAccessToken: async (firstname, password, persist) => {
-
     const existingUser = await User.findOne({ firstname: firstname });
     if (!existingUser) {
       throw { code: 401, message: "Invalid firstname" };
@@ -89,6 +88,56 @@ export const AuthService = {
     } catch (err) {
       console.error(err);
       throw { code: 500, message: "Failed to create user or send email" };
+    }
+  },
+  getUserData: async (email) => {
+    try {
+      const user = await User.findOne({ email: email });
+      if (!user) {
+        throw { code: 404, message: "User not found" };
+      }
+      const response = {
+        firstname: user?.firstname,
+        lastname: user?.lastname,
+        email: user?.email,
+        number: user?.number,
+        thumbnail: user?.thumbnail,
+        bio: user?.bio,
+      };
+      return response;
+    } catch (err) {
+      console.error(err);
+      throw { code: 500, message: "Failed to get user data." };
+    }
+  },
+  addBioThumbnail: async (bio, files, email) => {
+    try {
+      const user = await User.findOne({ email: email });
+      if (!user) {
+        throw { code: 404, message: "User not found" };
+      }
+      if (bio) {
+        if (bio.length > 500) {
+          throw {
+            code: 400,
+            message: "Bio should have a maximum of 500 characters.",
+          };
+        }
+      }
+
+      let thumbnailFile = "";
+      if (files.thumbnail) {
+        const file = files.thumbnail[0];
+        thumbnailFile = file.location;
+      }
+
+      await User.findByIdAndUpdate(user._id, {
+        thumbnail: thumbnailFile,
+        bio: bio ?? "",
+      });
+    } catch (err) {
+      console.error(err);
+      throw { code: 500, message: "Failed to add bio or thumbnail." };
     }
   },
 };
