@@ -67,7 +67,7 @@ export const AuthRoutes = (app) => {
   app.get("/api/accounts/userdata", Authorize(), async (req, res) => {
     try {
 
-      const response = await getUserData(req.user.email);
+      const response = await AuthService.getUserData(req.user.email);
       res.status(200).send(response);
 
     } catch (e) {
