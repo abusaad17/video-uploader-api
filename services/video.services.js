@@ -27,7 +27,6 @@ export const VideoService = {
     try {
       const users = await User.find({ videoId: { $exists: true, $ne: [] } })
         .select("_id firstname lastname videoId thumbnail")
-        .limit(5);
 
       const usersWithVideos = await Promise.all(
         users.map(async (user) => {
